@@ -1,0 +1,81 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "resourceGroupName": {
+      "value": "${AZURE_RESOURCE_GROUP_NAME}"
+    },
+    "keyVaultName": {
+      "value": "${VERIFIED_ID_KEY_VAULT_NAME}"
+    },
+    "staticWebAppName": {
+      "value": "${VERIFIED_ID_STATIC_WEB_APP_NAME}"
+    },
+    "keyVaultSku": {
+      "value": "${VERIFIED_ID_KEY_VAULT_SKU}"
+    },
+    "staticWebAppLocation": {
+      "value": "${VERIFIED_ID_STATIC_WEB_APP_LOCATION}"
+    },
+    "verifiedIdDisplayName": {
+      "value": "${VERIFIED_ID_DISPLAY_NAME}"
+    },
+    "verifiedIdDomain": {
+      "value": "${VERIFIED_ID_DOMAIN}"
+    },
+    "employeeLogoUri": {
+      "value": "${VERIFIED_ID_EMPLOYEE_LOGO_URI}"
+    },
+    "employeeLocale": {
+      "value": "${VERIFIED_ID_EMPLOYEE_LOCALE}"
+    },
+    "employeeCardTitle": {
+      "value": "${VERIFIED_ID_EMPLOYEE_CARD_TITLE}"
+    },
+    "employeeCardBackgroundColor": {
+      "value": "${VERIFIED_ID_EMPLOYEE_CARD_BACKGROUND_COLOR}"
+    },
+    "employeeCardTextColor": {
+      "value": "${VERIFIED_ID_EMPLOYEE_CARD_TEXT_COLOR}"
+    },
+    "employeeCardDescription": {
+      "value": "${VERIFIED_ID_EMPLOYEE_CARD_DESCRIPTION}"
+    },
+    "employeeLogoDescription": {
+      "value": "${VERIFIED_ID_EMPLOYEE_LOGO_DESCRIPTION}"
+    },
+    "employeeConsentTitle": {
+      "value": "${VERIFIED_ID_EMPLOYEE_CONSENT_TITLE}"
+    },
+    "employeeConsentInstructions": {
+      "value": "${VERIFIED_ID_EMPLOYEE_CONSENT_INSTRUCTIONS}"
+    },
+    "allowPremium": {
+      "value": "${VERIFIED_ID_ALLOW_PREMIUM}"
+    },
+    "skipTenantBootstrap": {
+      "value": "${VERIFIED_ID_SKIP_TENANT_BOOTSTRAP}"
+    },
+    "useDeviceCode": {
+      "value": "${AZD_VERIFIED_ID_USE_DEVICE_CODE}"
+    },
+    "enablePurgeProtection": {
+      "value": "${VERIFIED_ID_ENABLE_PURGE_PROTECTION}"
+    },
+    "deployerObjectId": {
+      "value": "${VERIFIED_ID_DEPLOYER_OBJECT_ID}"
+    },
+    "keyVaultExists": {
+      "value": "${VERIFIED_ID_KEY_VAULT_EXISTS}"
+    },
+    "staticWebAppExists": {
+      "value": "${VERIFIED_ID_STATIC_WEB_APP_EXISTS}"
+    }
+  }
+}

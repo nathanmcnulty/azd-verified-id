@@ -1,0 +1,5 @@
+.azure/
+.verifiedid/
+TestResults/
+*.user
+*.log
