@@ -28,7 +28,7 @@ $authorityId = Get-VidEnvironmentValue -Name 'VERIFIED_ID_AUTHORITY_ID'
 if ([string]::IsNullOrWhiteSpace($authorityId)) {
     Write-Host 'This operation will onboard Microsoft Entra Verified ID, grant its service principals access to the dedicated Key Vault, and create a did:web authority.'
     Confirm-VidAction -Prompt 'Approve the Verified ID tenant bootstrap?' -ExpectedValue $expectedDid `
-        -NonInteractiveConfirmationVariable 'VERIFIED_ID_CONFIRM_BOOTSTRAP_DID'
+        -NonInteractiveConfirmationVariable 'AZD_VERIFIED_ID_CONFIRM_BOOTSTRAP_DID'
 }
 
 $temporaryApplication = $null

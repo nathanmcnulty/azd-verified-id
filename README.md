@@ -27,6 +27,8 @@ Verified ID service principals and their Key Vault key policies are created or r
 
 The Graph identity used by the hook must be able to perform the equivalent of `Application.ReadWrite.All` and `DelegatedPermissionGrant.ReadWrite.All`. The hook creates a temporary single-tenant public client, grants only the current user the Verified ID Admin `full_access` delegated scope, and uses authorization code with PKCE.
 
+Each tenant reconciliation hook uses one temporary application and one authorization flow, then deletes the application, service principal, and grant. A typical deployment authorizes once during initial authority setup and once after manual DNS changes. The browser login hint reuses the administrator's existing session without forcing account selection. Authorization links from timed-out runs are intentionally invalid after cleanup and should be closed.
+
 For a terminal without a usable local browser callback, select the device-code fallback before provisioning:
 
 ```powershell
@@ -56,7 +58,7 @@ The first tenant mutation requires typing the expected DID. For a deliberately u
 
 ```powershell
 $env:AZD_VERIFIED_ID_NON_INTERACTIVE = 'true'
-$env:VERIFIED_ID_CONFIRM_BOOTSTRAP_DID = 'did:web:did.contoso.com'
+$env:AZD_VERIFIED_ID_CONFIRM_BOOTSTRAP_DID = 'did:web:did.contoso.com'
 azd up --no-prompt
 ```
 
@@ -68,7 +70,7 @@ azd hooks run postprovision
 
 For `did.contoso.com`, the ownership TXT record name is `_dnsauth.did.contoso.com`. Keep the TXT record while replacing the CNAME with the Static Web App hostname produced by the deployment.
 
-Credential creation waits until the public documents are available and Verified ID persists `linkedDomainsVerified: true`. The hook retries the domain refresh and polls the authority for up to five minutes to absorb service replication delays; it does not treat the validation request's `204` response as completion by itself.
+Credential creation waits until Static Web Apps reports the custom domain as ready, both public documents are available, and Verified ID persists `linkedDomainsVerified: true`. The hook polls each asynchronous boundary for up to five minutes; it does not treat validation request acceptance as completion by itself.
 
 ## VerifiedEmployee
 
@@ -77,6 +79,8 @@ The hook creates the official `VerifiedEmployee` contract through the documented
 ## Configuration
 
 User-facing deployment inputs are mapped in [`infra/main.parameters.json`](infra/main.parameters.json) and described by Bicep parameter metadata, allowing a deployment wizard to discover them. Preprovision supplies every missing value before Bicep runs. Tenant-derived defaults are calculated from the selected Azure CLI tenant.
+
+Early `preup` and `preinfracreate` hooks materialize defaults before azd resolves required Bicep inputs. This allows a fresh or previously deleted environment to run `azd up --no-prompt` without manually restoring generated resource names.
 
 ### Core inputs
 
@@ -157,9 +161,9 @@ azd env set VERIFIED_ID_RESET_TENANT_ON_DOWN true
 azd down
 ```
 
-The hook inventories the tenant, verifies that the expected authority points to this environment's Key Vault, warns that every authority, contract, and issued credential will be invalidated, and requires the domain to be typed again. Noninteractive reset additionally requires the process variable `VERIFIED_ID_CONFIRM_TENANT_RESET_DOMAIN` to exactly equal the configured hostname.
+The hook inventories the tenant, verifies that the expected authority points to this environment's Key Vault, warns that every authority, contract, and issued credential will be invalidated, and requires the domain to be typed again. It clears and verifies My Account contract settings before opt-out, then polls until no authorities remain before allowing Azure resource deletion. Noninteractive reset additionally requires the process variable `AZD_VERIFIED_ID_CONFIRM_TENANT_RESET_DOMAIN` to exactly equal the configured hostname.
 
-Noninteractive resource deletion without tenant reset requires the process variable `VERIFIED_ID_CONFIRM_RESOURCE_DELETE_DOMAIN` to equal the configured hostname. Confirmation values should not be persisted in the azd environment.
+Noninteractive resource deletion without tenant reset requires the process variable `AZD_VERIFIED_ID_CONFIRM_RESOURCE_DELETE_DOMAIN` to equal the configured hostname. Confirmation values should not be persisted in the azd environment.
 
 ## Validate
 

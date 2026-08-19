@@ -20,7 +20,7 @@ if (-not $resetTenant) {
     Confirm-VidAction `
         -Prompt 'The Verified ID tenant authority will remain configured but lose its DID site and signing vault. Continue without tenant reset?' `
         -ExpectedValue $hostname `
-        -NonInteractiveConfirmationVariable 'VERIFIED_ID_CONFIRM_RESOURCE_DELETE_DOMAIN'
+        -NonInteractiveConfirmationVariable 'AZD_VERIFIED_ID_CONFIRM_RESOURCE_DELETE_DOMAIN'
     return
 }
 
@@ -28,7 +28,7 @@ Write-Warning 'Verified ID opt-out is tenant-wide. It removes every authority an
 Confirm-VidAction `
     -Prompt 'Permanently reset Microsoft Entra Verified ID for this tenant?' `
     -ExpectedValue $hostname `
-    -NonInteractiveConfirmationVariable 'VERIFIED_ID_CONFIRM_TENANT_RESET_DOMAIN'
+    -NonInteractiveConfirmationVariable 'AZD_VERIFIED_ID_CONFIRM_TENANT_RESET_DOMAIN'
 
 $temporaryApplication = $null
 try {

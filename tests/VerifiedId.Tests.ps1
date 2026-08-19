@@ -120,6 +120,12 @@ Describe 'Wizard input surface' {
             $parameterValues | Should -Contain "`${$name}"
         }
     }
+
+    It 'initializes defaults before azd resolves infrastructure inputs' {
+        $azureYaml = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\azure.yaml') -Raw
+        $azureYaml | Should -Match '(?m)^\s{2}preup:'
+        $azureYaml | Should -Match '(?m)^\s{2}preinfracreate:'
+    }
 }
 
 Describe 'VerifiedEmployee display definition' {

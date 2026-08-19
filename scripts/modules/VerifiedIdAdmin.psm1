@@ -419,8 +419,54 @@ function Initialize-VidTenant {
 }
 
 function Invoke-VidTenantOptOut {
-    param([Parameter(Mandatory)][string]$AccessToken)
-    Invoke-VidAdminRequest -Method POST -Path '/v1.0/verifiableCredentials/optout' -AccessToken $AccessToken -NoRetry | Out-Null
+    param(
+        [Parameter(Mandatory)][string]$AccessToken,
+        [ValidateRange(1, 120)][int]$MaxPollAttempts = 60,
+        [AllowNull()][scriptblock]$RequestInvoker,
+        [AllowNull()][scriptblock]$DelayInvoker
+    )
+
+    $myAccountPath = '/v1.0/verifiableCredentials/organizationSettings/myAccount'
+    Invoke-VidAdminOperation -Invoker $RequestInvoker -Parameters @{
+        Method = 'POST'; Path = $myAccountPath; AccessToken = $AccessToken
+        Body = @{ contractIdsEnabled = @() }; NoRetry = $true
+    } | Out-Null
+    for ($attempt = 1; $attempt -le 12; $attempt++) {
+        $myAccount = Invoke-VidAdminOperation -Invoker $RequestInvoker -Parameters @{
+            Method = 'GET'; Path = $myAccountPath; AccessToken = $AccessToken; NoRetry = $true
+        }
+        $enabledIds = @((Get-VidObjectProperty -InputObject $myAccount -Name 'contractIdsEnabled' -Default @()))
+        if ($enabledIds.Count -eq 0) { break }
+        if ($attempt -eq 12) { throw 'My Account remained enabled for one or more contracts during tenant reset.' }
+        if ($null -ne $DelayInvoker) { & $DelayInvoker 5 } else { Start-Sleep -Seconds 5 }
+    }
+
+    Invoke-VidAdminOperation -Invoker $RequestInvoker -Parameters @{
+        Method = 'POST'; Path = '/v1.0/verifiableCredentials/optout'; AccessToken = $AccessToken; NoRetry = $true
+    } | Out-Null
+
+    for ($attempt = 1; $attempt -le $MaxPollAttempts; $attempt++) {
+        try {
+            $result = Invoke-VidAdminOperation -Invoker $RequestInvoker -Parameters @{
+                Method = 'GET'; Path = '/v1.0/verifiableCredentials/authorities'; AccessToken = $AccessToken; NoRetry = $true
+            }
+            $authorities = @(if ($null -eq $result) {
+                @()
+            } elseif ($null -ne $result.PSObject.Properties['value']) {
+                $result.value
+            } elseif ($result -is [Array]) {
+                $result
+            })
+            if ($authorities.Count -eq 0) { return }
+        } catch {
+            if ((Get-VidHttpStatusCode -ErrorRecord $_) -in @(404, 410)) { return }
+            throw
+        }
+        if ($attempt -lt $MaxPollAttempts) {
+            if ($null -ne $DelayInvoker) { & $DelayInvoker 5 } else { Start-Sleep -Seconds 5 }
+        }
+    }
+    throw 'Verified ID opt-out was accepted, but authorities remained visible after the replication timeout.'
 }
 
 function Invoke-VidWellKnownValidation {

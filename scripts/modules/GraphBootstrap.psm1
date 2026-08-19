@@ -88,7 +88,8 @@ function New-VidQueryString {
 function Invoke-VidBrowserAuthorization {
     param(
         [Parameter(Mandatory)][string]$TenantId,
-        [Parameter(Mandatory)][string]$ClientId
+        [Parameter(Mandatory)][string]$ClientId,
+        [Parameter(Mandatory)][string]$LoginHint
     )
 
     $portProbe = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
@@ -108,7 +109,7 @@ function Invoke-VidBrowserAuthorization {
         code_challenge = $pkce.Challenge
         code_challenge_method = 'S256'
         state = $state
-        prompt = 'select_account'
+        login_hint = $LoginHint
     }
     $authorizeUri = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/authorize?$query"
 
@@ -116,11 +117,11 @@ function Invoke-VidBrowserAuthorization {
     $listener.Prefixes.Add($redirectUri)
     $listener.Start()
     try {
-        Write-VidInfo 'Opening a browser for delegated Verified ID administration consent.'
+        Write-VidInfo "Opening a browser for delegated Verified ID administration as $LoginHint."
         Start-Process $authorizeUri | Out-Null
         $contextTask = $listener.GetContextAsync()
-        if (-not $contextTask.Wait([TimeSpan]::FromMinutes(5))) {
-            throw 'Timed out waiting for the Verified ID administrator sign-in.'
+        if (-not $contextTask.Wait([TimeSpan]::FromMinutes(10))) {
+            throw "Timed out waiting for the Verified ID administrator sign-in. Close the browser tab for temporary application '$ClientId'; the application will now be deleted."
         }
 
         $context = $contextTask.Result
@@ -129,7 +130,7 @@ function Invoke-VidBrowserAuthorization {
         $authorizationError = $queryParameters.Get('error')
         $authorizationErrorDescription = $queryParameters.Get('error_description')
         $code = $queryParameters.Get('code')
-        $responseText = '<html><body><h2>Verified ID authorization completed.</h2><p>You can return to the terminal.</p></body></html>'
+        $responseText = '<html><body><h2>Verified ID authorization completed.</h2><p>This temporary authorization tab can be closed.</p><script>window.close();</script></body></html>'
         $responseBytes = [Text.Encoding]::UTF8.GetBytes($responseText)
         $context.Response.ContentType = 'text/html; charset=utf-8'
         $context.Response.ContentLength64 = $responseBytes.Length
@@ -269,7 +270,7 @@ function New-VidTemporaryAdminApplication {
         if (ConvertTo-VidBoolean -Value $env:AZD_VERIFIED_ID_USE_DEVICE_CODE) {
             $temporary.AccessToken = Invoke-VidDeviceAuthorization -TenantId $TenantId -ClientId $app.appId
         } else {
-            $temporary.AccessToken = Invoke-VidBrowserAuthorization -TenantId $TenantId -ClientId $app.appId
+            $temporary.AccessToken = Invoke-VidBrowserAuthorization -TenantId $TenantId -ClientId $app.appId -LoginHint $me.userPrincipalName
         }
         return [pscustomobject]$temporary
     } catch {
@@ -299,6 +300,16 @@ function Remove-VidTemporaryAdminApplication {
                 Invoke-VidGraphRequest -Method DELETE -Path "$($item.Path)$($item.Id)" -AccessToken $token | Out-Null
             } catch {
                 if ((Get-VidHttpStatusCode -ErrorRecord $_) -ne 404) { throw }
+            }
+            for ($attempt = 1; $attempt -le 12; $attempt++) {
+                try {
+                    Invoke-VidGraphRequest -Method GET -Path "$($item.Path)$($item.Id)?`$select=id" -AccessToken $token | Out-Null
+                } catch {
+                    if ((Get-VidHttpStatusCode -ErrorRecord $_) -eq 404) { break }
+                    throw
+                }
+                if ($attempt -eq 12) { throw "Temporary Graph object '$($item.Id)' remained visible after deletion." }
+                Start-Sleep -Seconds 2
             }
         }
         foreach ($name in @('VERIFIED_ID_TEMP_PERMISSION_GRANT_ID', 'VERIFIED_ID_TEMP_SERVICE_PRINCIPAL_ID', 'VERIFIED_ID_TEMP_APPLICATION_OBJECT_ID')) {

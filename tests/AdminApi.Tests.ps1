@@ -211,3 +211,49 @@ Describe 'Linked-domain verification behavior' {
         @($requests | Where-Object Method -EQ 'GET').Count | Should -Be 5
     }
 }
+
+Describe 'Tenant opt-out behavior' {
+    It 'polls until every authority is absent' {
+        $requests = [Collections.Generic.List[hashtable]]::new()
+        $state = [pscustomobject]@{ GetCount = 0 }
+        $invoker = {
+            param($request)
+            $requests.Add($request)
+            if ($request.Method -eq 'POST') { return $null }
+            if ($request.Path -like '*/organizationSettings/myAccount') { return [pscustomobject]@{ contractIdsEnabled = @() } }
+            $state.GetCount++
+            if ($state.GetCount -lt 3) { return [pscustomobject]@{ value = @([pscustomobject]@{ id = 'authority-id' }) } }
+            return [pscustomobject]@{ value = @() }
+        }.GetNewClosure()
+
+        Invoke-VidTenantOptOut -AccessToken 'token' -RequestInvoker $invoker -DelayInvoker {}
+
+        @($requests | Where-Object Method -EQ 'POST').Count | Should -Be 2
+        @($requests | Where-Object Method -EQ 'GET').Count | Should -Be 4
+    }
+
+    It 'fails instead of clearing state while authorities remain visible' {
+        $invoker = {
+            param($request)
+            if ($request.Method -eq 'GET' -and $request.Path -like '*/organizationSettings/myAccount') {
+                return [pscustomobject]@{ contractIdsEnabled = @() }
+            }
+            if ($request.Method -eq 'GET') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'authority-id' }) } }
+        }
+
+        { Invoke-VidTenantOptOut -AccessToken 'token' -MaxPollAttempts 2 -RequestInvoker $invoker -DelayInvoker {} } | Should -Throw
+    }
+
+    It 'fails before opt-out when My Account contract IDs cannot be cleared' {
+        $requests = [Collections.Generic.List[hashtable]]::new()
+        $invoker = {
+            param($request)
+            $requests.Add($request)
+            if ($request.Method -eq 'GET') { [pscustomobject]@{ contractIdsEnabled = @('stale-contract') } }
+        }.GetNewClosure()
+
+        { Invoke-VidTenantOptOut -AccessToken 'token' -RequestInvoker $invoker -DelayInvoker {} } | Should -Throw
+
+        @($requests | Where-Object Path -EQ '/v1.0/verifiableCredentials/optout').Count | Should -Be 0
+    }
+}

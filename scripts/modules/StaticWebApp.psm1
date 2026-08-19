@@ -260,11 +260,23 @@ function Deploy-VidDocumentsAndDomain {
     if ($status -ne 'Ready') {
         Invoke-VidStaticWebAppCustomDomainValidation -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName `
             -StaticWebAppName $StaticWebAppName -Hostname $Hostname
-        Write-Warning "Static Web App custom domain '$Hostname' is '$status'."
-        Write-Host "  Create/retain TXT: $txtName = $validationToken"
-        Write-Host "  Set CNAME:         $Hostname -> $StaticWebAppHostname"
-        Write-Host '  Then rerun azd provision. The hook will resume from the current state.'
-        return [pscustomobject]@{ Ready = $false; Status = $status }
+        for ($attempt = 1; $attempt -le 60; $attempt++) {
+            $customDomain = Get-VidStaticWebAppCustomDomain -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName `
+                -StaticWebAppName $StaticWebAppName -Hostname $Hostname
+            $customDomainProperties = Get-VidObjectProperty -InputObject $customDomain -Name 'properties'
+            $status = [string](Get-VidObjectProperty -InputObject $customDomainProperties -Name 'status' -Default 'Validating')
+            Set-VidEnvironmentValue -Name 'VERIFIED_ID_CUSTOM_DOMAIN_STATUS' -Value $status
+            if ($status -eq 'Ready') { break }
+            if ($status -in @('Failed', 'Unhealthy')) { throw "Static Web App custom domain validation failed with status '$status'." }
+            if ($attempt -lt 60) { Start-Sleep -Seconds 5 }
+        }
+        if ($status -ne 'Ready') {
+            Write-Warning "Static Web App custom domain '$Hostname' is '$status'."
+            Write-Host "  Create/retain TXT: $txtName = $validationToken"
+            Write-Host "  Set CNAME:         $Hostname -> $StaticWebAppHostname"
+            Write-Host '  Then rerun azd hooks run postprovision. The hook will resume from the current state.'
+            return [pscustomobject]@{ Ready = $false; Status = $status }
+        }
     }
 
     $didUri = "https://$Hostname/.well-known/did.json"

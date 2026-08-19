@@ -9,6 +9,20 @@ infra:
 requiredVersions:
   azd: ">= 1.23.0"
 hooks:
+  preup:
+    windows:
+      shell: pwsh
+      run: ./scripts/initialize-environment.ps1
+    posix:
+      shell: pwsh
+      run: ./scripts/initialize-environment.ps1
+  preinfracreate:
+    windows:
+      shell: pwsh
+      run: ./scripts/initialize-environment.ps1
+    posix:
+      shell: pwsh
+      run: ./scripts/initialize-environment.ps1
   preprovision:
     windows:
       shell: pwsh
