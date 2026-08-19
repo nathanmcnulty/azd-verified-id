@@ -53,11 +53,30 @@ function Set-VidEnvironmentValue {
 
 function Initialize-VidEnvironmentDefaults {
     $domainWasSpecified = -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable('VERIFIED_ID_DOMAIN'))
+    if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+        throw "Azure CLI is required. Install it from https://aka.ms/installazurecli and run azd up again."
+    }
     $accountJson = & az account show --output json 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "Azure CLI is not signed in. Run 'az login' for the target tenant. $($accountJson -join ' ')"
+        if (ConvertTo-VidBoolean -Value $env:AZD_VERIFIED_ID_NON_INTERACTIVE) {
+            throw "Azure CLI is not signed in. Run 'az login' for the target tenant before unattended deployment."
+        }
+        Write-VidStep 'Azure sign-in'
+        Write-VidInfo 'A browser will open. Sign in with the administrator account for the target tenant.'
+        $loginOutput = & az login --output none 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Azure CLI sign-in failed: $($loginOutput -join ' ')" }
+        $accountJson = & az account show --output json 2>&1
+        if ($LASTEXITCODE -ne 0) { throw 'Azure CLI sign-in completed without selecting an active subscription.' }
     }
     $account = $accountJson | ConvertFrom-Json
+    $selectedSubscriptionId = Get-VidEnvironmentValue -Name 'AZURE_SUBSCRIPTION_ID'
+    if (-not [string]::IsNullOrWhiteSpace($selectedSubscriptionId) -and $account.id -ne $selectedSubscriptionId) {
+        $setAccountOutput = & az account set --subscription $selectedSubscriptionId 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Azure CLI could not select azd subscription '$selectedSubscriptionId': $($setAccountOutput -join ' ')" }
+        $accountJson = & az account show --output json 2>&1
+        if ($LASTEXITCODE -ne 0) { throw 'Azure CLI could not read the selected azd subscription.' }
+        $account = $accountJson | ConvertFrom-Json
+    }
 
     $organizationJson = & az rest --method get --url 'https://graph.microsoft.com/v1.0/organization?$select=displayName,verifiedDomains' --output json 2>&1
     if ($LASTEXITCODE -ne 0) {
@@ -174,6 +193,43 @@ function Initialize-VidEnvironmentDefaults {
     } else {
         Set-VidEnvironmentValue -Name 'VERIFIED_ID_STATIC_WEB_APP_EXISTS' -Value 'false'
     }
+}
+
+function Initialize-VidInteractiveConfiguration {
+    if ((ConvertTo-VidBoolean -Value $env:AZD_VERIFIED_ID_NON_INTERACTIVE) -or
+        (ConvertTo-VidBoolean -Value $env:AZD_NON_INTERACTIVE) -or
+        (ConvertTo-VidBoolean -Value (Get-VidEnvironmentValue -Name 'VERIFIED_ID_CONFIGURATION_CONFIRMED' -Default 'false'))) {
+        return
+    }
+
+    Write-VidStep 'Verified ID options'
+    Write-Host 'Press Enter to accept each recommended value.'
+
+    $displayName = Get-VidEnvironmentValue -Name 'VERIFIED_ID_DISPLAY_NAME' -Required
+    $answer = Read-Host "Organization name shown on the credential [$displayName]"
+    if (-not [string]::IsNullOrWhiteSpace($answer)) { $displayName = $answer.Trim() }
+    Set-VidEnvironmentValue -Name 'VERIFIED_ID_DISPLAY_NAME' -Value $displayName
+
+    $hostname = Get-VidEnvironmentValue -Name 'VERIFIED_ID_DOMAIN' -Required
+    $answer = Read-Host "Public Verified ID hostname [$hostname]"
+    if (-not [string]::IsNullOrWhiteSpace($answer)) { $hostname = Normalize-VidHostname -Value $answer }
+    Set-VidEnvironmentValue -Name 'VERIFIED_ID_DOMAIN' -Value $hostname
+
+    $purgeProtection = ConvertTo-VidBoolean -Value (Get-VidEnvironmentValue -Name 'VERIFIED_ID_ENABLE_PURGE_PROTECTION' -Default 'false')
+    $recommendedAnswer = if ($purgeProtection) { 'Y/n' } else { 'y/N' }
+    while ($true) {
+        $answer = (Read-Host "Protect the signing Key Vault from permanent deletion? [$recommendedAnswer]").Trim()
+        if ([string]::IsNullOrWhiteSpace($answer)) { break }
+        if ($answer -match '^y(es)?$') { $purgeProtection = $true; break }
+        if ($answer -match '^n(o)?$') { $purgeProtection = $false; break }
+        Write-Warning 'Enter Y or N.'
+    }
+    Set-VidEnvironmentValue -Name 'VERIFIED_ID_ENABLE_PURGE_PROTECTION' -Value $purgeProtection.ToString().ToLowerInvariant()
+    Set-VidEnvironmentValue -Name 'VERIFIED_ID_CONFIGURATION_CONFIRMED' -Value 'true'
+
+    Write-VidInfo "Credential issuer: $displayName"
+    Write-VidInfo "Verified ID address: did:web:$hostname"
+    Write-VidInfo "Key Vault purge protection: $($purgeProtection.ToString().ToLowerInvariant())"
 }
 
 Export-ModuleMember -Function *-Vid*

@@ -123,8 +123,10 @@ Describe 'Wizard input surface' {
 
     It 'initializes defaults before azd resolves infrastructure inputs' {
         $azureYaml = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\azure.yaml') -Raw
+        $initializer = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\scripts\initialize-environment.ps1') -Raw
         $azureYaml | Should -Match '(?m)^\s{2}preup:'
         $azureYaml | Should -Match '(?m)^\s{2}preinfracreate:'
+        $initializer | Should -Match 'Initialize-VidInteractiveConfiguration'
     }
 }
 

@@ -6,3 +6,4 @@ Import-Module (Join-Path $PSScriptRoot 'VerifiedId.psm1') -Force -DisableNameChe
 
 Import-VidAzdEnvironment
 Initialize-VidEnvironmentDefaults
+Initialize-VidInteractiveConfiguration
