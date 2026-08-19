@@ -13,8 +13,8 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-azd@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: azure/setup-azd@0b7e3a35ab00f2eee7080c845eb39c3f0ebfa553
       - name: Install Pester
         shell: pwsh
         run: |
