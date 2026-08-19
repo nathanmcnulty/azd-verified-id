@@ -146,3 +146,68 @@ Describe 'VerifiedEmployee manifest behavior' {
         $result.id | Should -Be 'contract-id'
     }
 }
+
+Describe 'Linked-domain verification behavior' {
+    It 'does not refresh an authority whose persisted verification is ready' {
+        $requests = [Collections.Generic.List[hashtable]]::new()
+        $invoker = {
+            param($request)
+            $requests.Add($request)
+            [pscustomobject]@{
+                id = 'authority-id'; linkedDomainsVerified = $true
+                didModel = [pscustomobject]@{ did = 'did:web:did.example.com'; didDocumentStatus = 'published' }
+            }
+        }.GetNewClosure()
+
+        $result = Invoke-VidWellKnownValidation -AuthorityId 'authority-id' -ExpectedDid 'did:web:did.example.com' `
+            -AccessToken 'token' -RequestInvoker $invoker -DelayInvoker {}
+
+        $result.linkedDomainsVerified | Should -BeTrue
+        @($requests | Where-Object Method -EQ 'GET').Count | Should -Be 1
+        @($requests | Where-Object Method -EQ 'POST').Count | Should -Be 0
+    }
+
+    It 'polls until domain verification is persisted after refresh' {
+        $requests = [Collections.Generic.List[hashtable]]::new()
+        $state = [pscustomobject]@{ GetCount = 0 }
+        $invoker = {
+            param($request)
+            $requests.Add($request)
+            if ($request.Method -eq 'POST') { return $null }
+            $state.GetCount++
+            return [pscustomobject]@{
+                id = 'authority-id'; linkedDomainsVerified = ($state.GetCount -ge 3)
+                didModel = [pscustomobject]@{ did = 'did:web:did.example.com'; didDocumentStatus = 'published' }
+            }
+        }.GetNewClosure()
+
+        $result = Invoke-VidWellKnownValidation -AuthorityId 'authority-id' -ExpectedDid 'did:web:did.example.com' `
+            -AccessToken 'token' -RequestInvoker $invoker -DelayInvoker {}
+
+        $result.linkedDomainsVerified | Should -BeTrue
+        @($requests | Where-Object Method -EQ 'POST').Count | Should -Be 1
+        @($requests | Where-Object Method -EQ 'GET').Count | Should -Be 3
+    }
+
+    It 'fails instead of reporting completion while verification remains unreplicated' {
+        $requests = [Collections.Generic.List[hashtable]]::new()
+        $invoker = {
+            param($request)
+            $requests.Add($request)
+            if ($request.Method -eq 'GET') {
+                [pscustomobject]@{
+                    id = 'authority-id'; linkedDomainsVerified = $false
+                    didModel = [pscustomobject]@{ did = 'did:web:did.example.com'; didDocumentStatus = 'published' }
+                }
+            }
+        }.GetNewClosure()
+
+        {
+            Invoke-VidWellKnownValidation -AuthorityId 'authority-id' -ExpectedDid 'did:web:did.example.com' `
+                -AccessToken 'token' -MaxValidationAttempts 2 -MaxPollAttempts 2 -RequestInvoker $invoker -DelayInvoker {}
+        } | Should -Throw
+
+        @($requests | Where-Object Method -EQ 'POST').Count | Should -Be 2
+        @($requests | Where-Object Method -EQ 'GET').Count | Should -Be 5
+    }
+}

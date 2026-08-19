@@ -426,11 +426,51 @@ function Invoke-VidTenantOptOut {
 function Invoke-VidWellKnownValidation {
     param(
         [Parameter(Mandatory)][string]$AuthorityId,
-        [Parameter(Mandatory)][string]$AccessToken
+        [Parameter(Mandatory)][string]$ExpectedDid,
+        [Parameter(Mandatory)][string]$AccessToken,
+        [ValidateRange(1, 10)][int]$MaxValidationAttempts = 5,
+        [ValidateRange(1, 60)][int]$MaxPollAttempts = 12,
+        [AllowNull()][scriptblock]$RequestInvoker,
+        [AllowNull()][scriptblock]$DelayInvoker
     )
-    Invoke-VidAdminRequest -Method POST `
-        -Path "/v1.0/verifiableCredentials/authorities/$AuthorityId/validateWellKnownDidConfiguration" `
-        -AccessToken $AccessToken -NoRetry | Out-Null
+
+    $authorityPath = "/v1.0/verifiableCredentials/authorities/$AuthorityId"
+    $validationPath = "$authorityPath/validateWellKnownDidConfiguration"
+    $getAuthority = {
+        Invoke-VidAdminOperation -Invoker $RequestInvoker -Parameters @{
+            Method = 'GET'; Path = $authorityPath; AccessToken = $AccessToken; NoRetry = $true
+        }
+    }
+    $assertAuthority = {
+        param([object]$Authority)
+        $returnedId = Get-VidObjectProperty -InputObject $Authority -Name 'id' -Default ''
+        $didModel = Get-VidObjectProperty -InputObject $Authority -Name 'didModel'
+        $returnedDid = Get-VidObjectProperty -InputObject $didModel -Name 'did' -Default ''
+        if ($returnedId -ne $AuthorityId -or $returnedDid -ne $ExpectedDid) {
+            throw "Verified ID returned an unexpected authority while validating '$ExpectedDid'."
+        }
+        $didDocumentStatus = Get-VidObjectProperty -InputObject $didModel -Name 'didDocumentStatus' -Default ''
+        $linkedDomainsVerified = Get-VidObjectProperty -InputObject $Authority -Name 'linkedDomainsVerified' -Default $false
+        return $didDocumentStatus -eq 'published' -and $linkedDomainsVerified -eq $true
+    }
+
+    $authority = & $getAuthority
+    if (& $assertAuthority $authority) { return $authority }
+
+    for ($validationAttempt = 1; $validationAttempt -le $MaxValidationAttempts; $validationAttempt++) {
+        Invoke-VidAdminOperation -Invoker $RequestInvoker -Parameters @{
+            Method = 'POST'; Path = $validationPath; AccessToken = $AccessToken; NoRetry = $true
+        } | Out-Null
+
+        for ($pollAttempt = 1; $pollAttempt -le $MaxPollAttempts; $pollAttempt++) {
+            $authority = & $getAuthority
+            if (& $assertAuthority $authority) { return $authority }
+            if ($pollAttempt -lt $MaxPollAttempts -or $validationAttempt -lt $MaxValidationAttempts) {
+                if ($null -ne $DelayInvoker) { & $DelayInvoker 5 } else { Start-Sleep -Seconds 5 }
+            }
+        }
+    }
+    throw "Verified ID did not persist linked-domain verification for '$ExpectedDid' after repeated validation attempts."
 }
 
 Export-ModuleMember -Function *-Vid*

@@ -44,7 +44,7 @@ function Set-VidEnvironmentValue {
     $current = [Environment]::GetEnvironmentVariable($Name)
     if (-not $Force -and $current -ceq $Value) { return }
 
-    $output = & azd env set $Name $Value 2>&1
+    $output = & azd env set $Name -- $Value 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to set azd environment value '$Name': $($output -join [Environment]::NewLine)"
     }

@@ -59,11 +59,22 @@ try {
         -Hostname $hostname
 
     if ($domainResult.Ready) {
-        Invoke-VidWellKnownValidation -AuthorityId $tenantResult.Authority.id -AccessToken $temporaryApplication.AccessToken
+        Set-VidEnvironmentValue -Name 'VERIFIED_ID_DOMAIN_VALIDATION_STATUS' -Value 'Verifying'
+        Invoke-VidWellKnownValidation -AuthorityId $tenantResult.Authority.id `
+            -ExpectedDid $tenantResult.Authority.didModel.did `
+            -AccessToken $temporaryApplication.AccessToken | Out-Null
         Set-VidEnvironmentValue -Name 'VERIFIED_ID_DOMAIN_VALIDATION_STATUS' -Value 'Validated'
-        Write-VidSuccess 'Verified ID accepted the public DID and linked-domain configuration'
+        Write-VidSuccess 'Verified ID persisted public DID and linked-domain verification'
     } else {
         Set-VidEnvironmentValue -Name 'VERIFIED_ID_DOMAIN_VALIDATION_STATUS' -Value $domainResult.Status
+        Set-VidEnvironmentValue -Name 'VERIFIED_ID_EMPLOYEE_STATUS' -Value 'WaitingForDomain'
+        Set-VidEnvironmentValue -Name 'VERIFIED_ID_MY_ACCOUNT_STATUS' -Value 'WaitingForDomain'
+        if ($domainResult.Status -eq 'AwaitingHttps') {
+            Set-VidEnvironmentValue -Name 'VERIFIED_ID_PROVISIONING_STATUS' -Value 'AwaitingHttps'
+        } else {
+            Set-VidEnvironmentValue -Name 'VERIFIED_ID_PROVISIONING_STATUS' -Value 'DnsActionRequired'
+        }
+        return
     }
 
     if ($null -eq $tenantResult.VerifiedEmployeeContract) {

@@ -68,6 +68,8 @@ azd hooks run postprovision
 
 For `did.contoso.com`, the ownership TXT record name is `_dnsauth.did.contoso.com`. Keep the TXT record while replacing the CNAME with the Static Web App hostname produced by the deployment.
 
+Credential creation waits until the public documents are available and Verified ID persists `linkedDomainsVerified: true`. The hook retries the domain refresh and polls the authority for up to five minutes to absorb service replication delays; it does not treat the validation request's `204` response as completion by itself.
+
 ## VerifiedEmployee
 
 The hook creates the official `VerifiedEmployee` contract through the documented Admin API access-token attestation model, enables it in My Account, and records its manifest URL. Existing `VerifiedEmployee` contracts are discovered but never updated or replaced. Existing My Account contract IDs are preserved. See [`credential/verified-employee.md`](credential/verified-employee.md).
