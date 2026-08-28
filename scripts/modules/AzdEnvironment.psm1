@@ -132,7 +132,6 @@ function Initialize-VidEnvironmentDefaults {
         VERIFIED_ID_ALLOW_PREMIUM = 'false'
         VERIFIED_ID_SKIP_TENANT_BOOTSTRAP = 'false'
         VERIFIED_ID_RESET_TENANT_ON_DOWN = 'false'
-        AZD_VERIFIED_ID_USE_DEVICE_CODE = 'false'
     }
 
     foreach ($entry in $defaults.GetEnumerator()) {

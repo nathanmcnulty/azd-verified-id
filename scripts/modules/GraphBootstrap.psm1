@@ -164,52 +164,6 @@ function Invoke-VidBrowserAuthorization {
     }
 }
 
-function Invoke-VidDeviceAuthorization {
-    param(
-        [Parameter(Mandatory)][string]$TenantId,
-        [Parameter(Mandatory)][string]$ClientId
-    )
-
-    $scope = "$($script:VerifiedIdAdminAppId)/$($script:VerifiedIdAdminScope)"
-    $deviceResponse = Invoke-RestMethod -Method POST `
-        -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/devicecode" `
-        -ContentType 'application/x-www-form-urlencoded' `
-        -Body @{ client_id = $ClientId; scope = $scope } -ErrorAction Stop
-    Write-Host $deviceResponse.message -ForegroundColor Yellow
-
-    $interval = [Math]::Max(5, [int]$deviceResponse.interval)
-    $deadline = [DateTimeOffset]::UtcNow.AddSeconds([int]$deviceResponse.expires_in)
-    while ([DateTimeOffset]::UtcNow -lt $deadline) {
-        Start-Sleep -Seconds $interval
-        try {
-            $tokenResponse = Invoke-RestMethod -Method POST `
-                -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" `
-                -ContentType 'application/x-www-form-urlencoded' `
-                -Body @{
-                    client_id = $ClientId
-                    grant_type = 'urn:ietf:params:oauth:grant-type:device_code'
-                    device_code = $deviceResponse.device_code
-                } -ErrorAction Stop
-            if (-not [string]::IsNullOrWhiteSpace($tokenResponse.access_token)) {
-                return $tokenResponse.access_token
-            }
-        } catch {
-            $errorCode = ''
-            if ($null -ne $_.ErrorDetails -and -not [string]::IsNullOrWhiteSpace($_.ErrorDetails.Message)) {
-                try { $errorCode = ($_.ErrorDetails.Message | ConvertFrom-Json).error } catch { Write-Verbose 'Device-code error response was not JSON.' }
-            }
-            switch ($errorCode) {
-                'authorization_pending' { continue }
-                'slow_down' { $interval += 5; continue }
-                'authorization_declined' { throw 'The administrator declined device-code authorization.' }
-                'expired_token' { throw 'The device code expired before authorization completed.' }
-                default { throw }
-            }
-        }
-    }
-    throw 'The device code expired before authorization completed.'
-}
-
 function New-VidTemporaryAdminApplication {
     param([Parameter(Mandatory)][string]$TenantId)
 
@@ -267,11 +221,7 @@ function New-VidTemporaryAdminApplication {
         $temporary.PermissionGrantId = $grant.id
         Set-VidEnvironmentValue -Name 'VERIFIED_ID_TEMP_PERMISSION_GRANT_ID' -Value $grant.id
 
-        if (ConvertTo-VidBoolean -Value $env:AZD_VERIFIED_ID_USE_DEVICE_CODE) {
-            $temporary.AccessToken = Invoke-VidDeviceAuthorization -TenantId $TenantId -ClientId $app.appId
-        } else {
-            $temporary.AccessToken = Invoke-VidBrowserAuthorization -TenantId $TenantId -ClientId $app.appId -LoginHint $me.userPrincipalName
-        }
+        $temporary.AccessToken = Invoke-VidBrowserAuthorization -TenantId $TenantId -ClientId $app.appId -LoginHint $me.userPrincipalName
         return [pscustomobject]$temporary
     } catch {
         $failureStack = $_.ScriptStackTrace

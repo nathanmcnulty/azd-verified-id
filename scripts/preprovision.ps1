@@ -38,7 +38,7 @@ foreach ($name in @('VERIFIED_ID_EMPLOYEE_CARD_BACKGROUND_COLOR', 'VERIFIED_ID_E
     $color = Get-VidEnvironmentValue -Name $name -Required
     if ($color -notmatch '^#[0-9A-Fa-f]{6}$') { throw "$name must be a six-digit hexadecimal color such as #000000." }
 }
-foreach ($name in @('VERIFIED_ID_ALLOW_PREMIUM', 'VERIFIED_ID_SKIP_TENANT_BOOTSTRAP', 'AZD_VERIFIED_ID_USE_DEVICE_CODE', 'VERIFIED_ID_ENABLE_PURGE_PROTECTION')) {
+foreach ($name in @('VERIFIED_ID_ALLOW_PREMIUM', 'VERIFIED_ID_SKIP_TENANT_BOOTSTRAP', 'VERIFIED_ID_ENABLE_PURGE_PROTECTION')) {
     ConvertTo-VidBoolean -Value (Get-VidEnvironmentValue -Name $name -Required) | Out-Null
 }
 Assert-VidGraphBootstrapPermission

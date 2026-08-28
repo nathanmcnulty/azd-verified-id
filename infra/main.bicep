@@ -83,13 +83,6 @@ param skipTenantBootstrap string = 'false'
   'true'
   'false'
 ])
-@description('Use device-code authentication instead of the default system-browser PKCE flow.')
-param useDeviceCode string = 'false'
-
-@allowed([
-  'true'
-  'false'
-])
 @description('Enable Key Vault purge protection. Recommended for long-lived production authorities.')
 param enablePurgeProtection string = 'false'
 
@@ -175,4 +168,3 @@ output VERIFIED_ID_EMPLOYEE_CONSENT_TITLE string = employeeConsentTitle
 output VERIFIED_ID_EMPLOYEE_CONSENT_INSTRUCTIONS string = employeeConsentInstructions
 output VERIFIED_ID_ALLOW_PREMIUM string = allowPremium
 output VERIFIED_ID_SKIP_TENANT_BOOTSTRAP string = skipTenantBootstrap
-output AZD_VERIFIED_ID_USE_DEVICE_CODE string = useDeviceCode

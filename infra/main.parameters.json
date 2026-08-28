@@ -62,9 +62,6 @@
     "skipTenantBootstrap": {
       "value": "${VERIFIED_ID_SKIP_TENANT_BOOTSTRAP}"
     },
-    "useDeviceCode": {
-      "value": "${AZD_VERIFIED_ID_USE_DEVICE_CODE}"
-    },
     "enablePurgeProtection": {
       "value": "${VERIFIED_ID_ENABLE_PURGE_PROTECTION}"
     },

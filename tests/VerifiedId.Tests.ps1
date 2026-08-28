@@ -115,10 +115,22 @@ Describe 'Wizard input surface' {
             'VERIFIED_ID_EMPLOYEE_CARD_BACKGROUND_COLOR', 'VERIFIED_ID_EMPLOYEE_CARD_TEXT_COLOR',
             'VERIFIED_ID_EMPLOYEE_CARD_DESCRIPTION', 'VERIFIED_ID_EMPLOYEE_LOGO_DESCRIPTION',
             'VERIFIED_ID_EMPLOYEE_CONSENT_TITLE', 'VERIFIED_ID_EMPLOYEE_CONSENT_INSTRUCTIONS',
-            'VERIFIED_ID_ALLOW_PREMIUM', 'VERIFIED_ID_SKIP_TENANT_BOOTSTRAP', 'AZD_VERIFIED_ID_USE_DEVICE_CODE'
+            'VERIFIED_ID_ALLOW_PREMIUM', 'VERIFIED_ID_SKIP_TENANT_BOOTSTRAP'
         )) {
             $parameterValues | Should -Contain "`${$name}"
         }
+    }
+
+    It 'uses browser authorization only and exposes no device-code surface' {
+        $bootstrap = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\scripts\modules\GraphBootstrap.psm1') -Raw
+        $bicep = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\infra\main.bicep') -Raw
+        $parameters = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\infra\main.parameters.json') -Raw
+        $environment = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\scripts\modules\AzdEnvironment.psm1') -Raw
+        $bootstrap | Should -Match 'Invoke-VidBrowserAuthorization'
+        $bootstrap | Should -Not -Match '(?i)device.?code|devicecode|DeviceCode'
+        $bicep | Should -Not -Match '(?i)useDeviceCode|device.?code|DeviceCode'
+        $parameters | Should -Not -Match '(?i)USE_DEVICE_CODE|useDeviceCode|device.?code'
+        $environment | Should -Not -Match '(?i)USE_DEVICE_CODE|useDeviceCode|device.?code'
     }
 
     It 'initializes defaults before azd resolves infrastructure inputs' {
