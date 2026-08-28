@@ -1,15 +1,13 @@
 # Security
 
-## Reporting
+## Reporting a vulnerability
 
-Do not open a public issue containing tenant IDs, access tokens, Static Web App deployment tokens, DID signing material, or other credentials. Use the repository owner's private security reporting channel.
+Please use GitHub's private vulnerability reporting channel for this repository. Do not open a public issue containing tenant IDs, access tokens, signing material, deployment tokens, or other secrets. If private reporting is unavailable, contact the repository owner privately before disclosing details.
 
 ## Deployment boundaries
 
-This template performs privileged tenant administration. Review the printed authority, tenant, subscription, resource group, Key Vault, and hostname before approving bootstrap or teardown.
+This template performs privileged tenant administration. Review the printed authority, tenant, subscription, resource group, Key Vault, and hostname before approving bootstrap or teardown. The tenant-wide `Verified ID optout` operation is irreversible and is disabled by default.
 
-The `Verified ID optout` operation is tenant-wide and irreversible. It is disabled by default and must never be used as ordinary rollback or reconciliation.
+## Secret handling
 
-## Persisted data
-
-The azd environment stores resource IDs, authority IDs, the public DID, public DNS guidance, public manifest URL, and state labels. It must not contain bearer tokens, refresh tokens, authorization codes, or deployment tokens.
+Never commit bearer tokens, refresh tokens, authorization codes, deployment tokens, or private signing material. Treat `.azure` state and local evidence as sensitive administrative data.
