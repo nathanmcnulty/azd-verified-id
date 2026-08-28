@@ -62,12 +62,7 @@ These values are used only when a missing Verified Employee credential is create
 
 The default flow opens the system browser and uses the signed-in administrator as a login hint. One temporary application is created for each tenant operation and deleted after the operation completes.
 
-Use device-code authentication when a local browser callback is unavailable:
-
-```powershell
-azd env set AZD_VERIFIED_ID_USE_DEVICE_CODE true
-azd hooks run postprovision
-```
+If the local browser callback is unavailable, resolve the normal operating-system or browser authentication issue before retrying. This template does not use device-code authentication.
 
 Authorization URLs from timed-out operations stop working because their temporary applications are deleted. Close old tabs and rerun the command to start a new authorization.
 
@@ -94,7 +89,7 @@ $env:AZD_VERIFIED_ID_CONFIRM_BOOTSTRAP_DID = 'did:web:did.contoso.com'
 azd up --no-prompt
 ```
 
-Do not persist confirmation variables in the azd environment. Browser or device-code administrator authorization is still required because the template does not retain an application credential or refresh token.
+Do not persist confirmation variables in the azd environment. Normal browser or operating-system administrator authorization is still required because the template does not retain an application credential or refresh token.
 
 ## Resume and Status
 
