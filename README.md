@@ -11,6 +11,9 @@ It automatically:
 
 You do not need to build or host an application. The deployment guides you through the required sign-ins and tells you exactly which DNS records to create.
 
+> [!WARNING]
+> This deployment creates a Verified ID authority and credential configuration in the selected tenant and publishes a public identity domain. Review the tenant, subscription, domain, and removal guidance before proceeding.
+
 ## Before You Start
 
 Install these free Microsoft tools on your computer:
@@ -32,8 +35,7 @@ For the simplest first deployment, use a **Global Administrator** account. See [
 Open PowerShell in a new, empty folder and run:
 
 ```powershell
-azd init -t nathanmcnulty/azd-verified-id .
-azd up
+azd init -t nathanmcnulty/azd-verified-id && azd up
 ```
 
 Follow the instructions shown in the terminal. The deployment will:
@@ -114,7 +116,7 @@ The template verifies the existing authority and credential instead of replacing
 | Domain validation is still pending | Wait a few minutes for DNS propagation, then run the postprovision command again. |
 | The wrong tenant or subscription is selected | Run `az logout`, then `az login --tenant <tenant-id>` and retry. |
 | `AADSTS700016` references an unfamiliar application ID | Close that old browser tab. It belongs to a temporary application from an earlier timed-out run and has already been deleted. |
-| Browser sign-in is unavailable | See the device-code option in [Advanced configuration](docs/advanced-configuration.md). |
+| Browser sign-in is unavailable | Resolve the normal operating-system or browser authentication requirement before retrying; this template does not use device-code authentication. |
 
 ## Removing the Deployment
 
