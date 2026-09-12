@@ -28,7 +28,7 @@ You also need:
 - An administrator account in the Microsoft Entra tenant
 - Access to edit DNS records for your organization's public domain
 
-For the simplest first deployment, use a **Global Administrator** account. See [Advanced configuration](docs/advanced-configuration.md) for a least-privilege option.
+For the simplest first deployment, use a **Global Administrator** account. Some environments already have the required Microsoft Graph permissions consented. If Graph consent has not been completed previously, the deployment may require a **Global Administrator or Privileged Role Administrator**. See [Advanced configuration](docs/advanced-configuration.md) for the exact permissions and the least-privilege, multi-authority option.
 
 ## Quick Start
 

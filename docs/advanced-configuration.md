@@ -66,7 +66,7 @@ If the local browser callback is unavailable, resolve the normal operating-syste
 
 Authorization URLs from timed-out operations stop working because their temporary applications are deleted. Close old tabs and rerun the command to start a new authorization.
 
-For least privilege, the administrator needs Authentication Policy Administrator plus permission to create temporary application registrations and principal-specific delegated permission grants. Global Administrator satisfies these requirements but is not required when the permissions are delegated separately.
+For least privilege, separate the authorities: the feature operator needs Authentication Policy Administrator plus permission to create temporary application registrations and principal-specific delegated permission grants, while a **Global Administrator or Privileged Role Administrator** approves the Microsoft Graph API permissions needed by the bootstrap client. The required delegated Graph scopes are `Application.ReadWrite.All` and `DelegatedPermissionGrant.ReadWrite.All`; they must be present in the signed-in Graph context before preprovision. The same person need not hold every role, but a Graph consent administrator and the feature operator must both participate. Without the Graph scopes, preprovision stops before tenant bootstrap.
 
 ## Infrastructure-Only Deployment
 
