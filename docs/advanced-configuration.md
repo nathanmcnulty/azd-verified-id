@@ -66,7 +66,7 @@ If the local browser callback is unavailable, resolve the normal operating-syste
 
 Authorization URLs from timed-out operations stop working because their temporary applications are deleted. Close old tabs and rerun the command to start a new authorization.
 
-For least privilege, separate the authorities: the feature operator needs Authentication Policy Administrator plus permission to create temporary application registrations and principal-specific delegated permission grants, while a **Global Administrator or Privileged Role Administrator** approves the Microsoft Graph API permissions needed by the bootstrap client. The required delegated Graph scopes are `Application.ReadWrite.All` and `DelegatedPermissionGrant.ReadWrite.All`; they must be present in the signed-in Graph context before preprovision. The same person need not hold every role, but a Graph consent administrator and the feature operator must both participate. Without the Graph scopes, preprovision stops before tenant bootstrap.
+For least privilege, separate the authorities: the feature operator needs Authentication Policy Administrator plus permission to create temporary application registrations and principal-specific delegated permission grants, while a **Global Administrator or Privileged Role Administrator** approves the Microsoft Graph API permissions needed by the bootstrap client. The required delegated Graph scopes are `Application.ReadWrite.All` and `DelegatedPermissionGrant.ReadWrite.All`; they must be present in the signed-in Graph context before tenant bootstrap. The same person need not hold every role, but a Graph consent administrator and the feature operator must both participate. Infrastructure-only preprovision does not require these write scopes.
 
 ## Infrastructure-Only Deployment
 
@@ -78,6 +78,8 @@ azd up
 ```
 
 Set the value back to `false` before running tenant setup.
+
+If a prior interrupted bootstrap left temporary administration object IDs, preprovision stops before starting another tenant bootstrap. Review the selected tenant and run `./scripts/Remove-OrphanedAdminApplication.ps1 -ExpectedTenantId <tenant-guid>` as a separate confirmed recovery action. The cleanup uses only recorded exact IDs and requires the tenant recorded with those IDs to match the selected azd and Azure CLI tenant. Older records without a tenant binding require manual exact-ID review and removal; the script will refuse to guess their tenant.
 
 ## Unattended Deployment
 

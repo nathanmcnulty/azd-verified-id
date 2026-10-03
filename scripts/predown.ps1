@@ -64,6 +64,6 @@ try {
     Write-VidSuccess 'Microsoft Entra Verified ID tenant reset completed'
 } finally {
     if ($null -ne $temporaryApplication) {
-        Remove-VidTemporaryAdminApplication -TemporaryApplication $temporaryApplication -SuppressErrors
+        Remove-VidTemporaryAdminApplication -TemporaryApplication $temporaryApplication -TenantId ([guid](Get-VidEnvironmentValue -Name 'AZURE_TENANT_ID' -Required)) -SuppressErrors
     }
 }

@@ -137,7 +137,7 @@ try {
     throw $failure
 } finally {
     if ($null -ne $temporaryApplication) {
-        Remove-VidTemporaryAdminApplication -TemporaryApplication $temporaryApplication -SuppressErrors
+        Remove-VidTemporaryAdminApplication -TemporaryApplication $temporaryApplication -TenantId ([guid](Get-VidEnvironmentValue -Name 'AZURE_TENANT_ID' -Required)) -SuppressErrors
         Write-VidSuccess 'Temporary administration application removed'
     }
 }
