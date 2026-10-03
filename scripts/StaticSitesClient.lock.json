@@ -1,0 +1,19 @@
+{
+  "version": "stable",
+  "buildId": "689a6c1fe8fc32f40348cc41223a7e9d83dd43d2",
+  "publishDate": "2026-05-21T04:21:14.7668998Z",
+  "files": {
+    "linux-x64": {
+      "url": "https://swalocaldeployv2-bndtgugjgqc3dhdx.b01.azurefd.net/downloads/689a6c1fe8fc32f40348cc41223a7e9d83dd43d2/linux/StaticSitesClient",
+      "sha": "f1a6771b0b72604fb1ce71c1f2462791394a418fa7c3638d771dbcf16f374687"
+    },
+    "win-x64": {
+      "url": "https://swalocaldeployv2-bndtgugjgqc3dhdx.b01.azurefd.net/downloads/689a6c1fe8fc32f40348cc41223a7e9d83dd43d2/windows/StaticSitesClient.exe",
+      "sha": "58bc6533b9cbdd1d9564d3f36625308f4b20ec5a0c51b093cb35e4bf61545f82"
+    },
+    "osx-x64": {
+      "url": "https://swalocaldeployv2-bndtgugjgqc3dhdx.b01.azurefd.net/downloads/689a6c1fe8fc32f40348cc41223a7e9d83dd43d2/macOS/StaticSitesClient",
+      "sha": "f2df9be13941c6570f9d16ec1e3c176f2e286c0155272323c0335705beb1e638"
+    }
+  }
+}
