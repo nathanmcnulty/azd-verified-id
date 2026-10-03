@@ -4,34 +4,52 @@ $ErrorActionPreference = 'Stop'
 $script:StaticWebAppApiVersion = '2024-11-01'
 
 function Get-VidStaticSitesClientPlatform {
-    if ($IsWindows) { return 'win-x64' }
+    if ($IsWindows -and [Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'X64') { return 'win-x64' }
     if ($IsLinux -and [Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'X64') { return 'linux-x64' }
     if ($IsMacOS -and [Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'X64') { return 'osx-x64' }
     throw 'Static Web Apps deployment currently requires an x64 Windows, Linux, or macOS host.'
 }
 
-function Get-VidStaticSitesClient {
-    $platform = Get-VidStaticSitesClientPlatform
-    $metadata = Invoke-RestMethod -Method GET -Uri 'https://aka.ms/swalocaldeploy' -ErrorAction Stop
-    $release = @($metadata | Where-Object { $_.version -eq 'stable' })[0]
-    if ($null -eq $release) { throw 'StaticSitesClient stable release metadata was not returned.' }
-    $file = $release.files.$platform
-    if ([string]::IsNullOrWhiteSpace($file.url) -or [string]::IsNullOrWhiteSpace($file.sha)) {
-        throw "StaticSitesClient metadata does not include '$platform'."
-    }
+function Get-VidStaticSitesClientRelease {
+    param([Parameter(Mandatory)][string]$Platform)
 
-    $cacheRoot = Join-Path $HOME '.verifiedid-tools/StaticSitesClient'
-    $releaseRoot = Join-Path $cacheRoot $release.buildId
+    $lockPath = Join-Path $PSScriptRoot '../StaticSitesClient.lock.json'
+    $release = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json
+    $fileProperty = $release.files.PSObject.Properties[$Platform]
+    if ($Platform -notin @('win-x64', 'linux-x64', 'osx-x64') -or $null -eq $fileProperty) {
+        throw "No pinned StaticSitesClient binary for '$Platform'."
+    }
+    $file = $fileProperty.Value
+    $uri = [uri]$file.url
+    if ($release.buildId -notmatch '^[a-f0-9]{40}$' -or
+        $file.sha -notmatch '^[a-f0-9]{64}$' -or
+        $uri.Scheme -cne 'https' -or $uri.Host -cne 'swalocaldeployv2-bndtgugjgqc3dhdx.b01.azurefd.net' -or
+        $uri.Port -ne 443 -or
+        $uri.UserInfo -or $uri.Fragment -or
+        -not $uri.AbsolutePath.StartsWith("/downloads/$($release.buildId)/", [StringComparison]::Ordinal)) {
+        throw 'Pinned StaticSitesClient release metadata is invalid.'
+    }
+    return [pscustomobject]@{ buildId = $release.buildId; url = $file.url; sha = $file.sha }
+}
+
+function Get-VidStaticSitesClient {
+    param(
+        [string]$Platform = (Get-VidStaticSitesClientPlatform),
+        [string]$CacheRoot = (Join-Path $HOME '.verifiedid-tools/StaticSitesClient')
+    )
+    $release = Get-VidStaticSitesClientRelease -Platform $Platform
+
+    $releaseRoot = Join-Path $CacheRoot $release.buildId
     [IO.Directory]::CreateDirectory($releaseRoot) | Out-Null
-    $binaryPath = Join-Path $releaseRoot ([IO.Path]::GetFileName(([Uri]$file.url).LocalPath))
+    $binaryPath = Join-Path $releaseRoot ([IO.Path]::GetFileName(([Uri]$release.url).LocalPath))
     $download = -not (Test-Path -LiteralPath $binaryPath -PathType Leaf)
     if (-not $download) {
-        $download = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $file.sha.ToLowerInvariant()
+        $download = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $release.sha
     }
     if ($download) {
-        Invoke-WebRequest -Uri $file.url -OutFile $binaryPath -ErrorAction Stop
+        Invoke-WebRequest -Uri $release.url -OutFile $binaryPath -ErrorAction Stop
         $hash = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($hash -ne $file.sha.ToLowerInvariant()) {
+        if ($hash -ne $release.sha) {
             Remove-Item -LiteralPath $binaryPath -Force -ErrorAction SilentlyContinue
             throw 'StaticSitesClient checksum validation failed.'
         }
