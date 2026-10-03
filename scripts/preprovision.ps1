@@ -6,7 +6,6 @@ Import-Module (Join-Path $PSScriptRoot 'VerifiedId.psm1') -Force -DisableNameChe
 
 Import-VidAzdEnvironment
 Initialize-VidEnvironmentDefaults
-Remove-VidOrphanedAdminApplication
 
 $requiredCommands = @('az', 'azd', 'pwsh')
 foreach ($command in $requiredCommands) {
@@ -41,7 +40,14 @@ foreach ($name in @('VERIFIED_ID_EMPLOYEE_CARD_BACKGROUND_COLOR', 'VERIFIED_ID_E
 foreach ($name in @('VERIFIED_ID_ALLOW_PREMIUM', 'VERIFIED_ID_SKIP_TENANT_BOOTSTRAP', 'VERIFIED_ID_ENABLE_PURGE_PROTECTION')) {
     ConvertTo-VidBoolean -Value (Get-VidEnvironmentValue -Name $name -Required) | Out-Null
 }
-Assert-VidGraphBootstrapPermission
+$skipTenantBootstrap = ConvertTo-VidBoolean -Value (Get-VidEnvironmentValue -Name 'VERIFIED_ID_SKIP_TENANT_BOOTSTRAP' -Required)
+if (-not $skipTenantBootstrap) {
+    if (@('VERIFIED_ID_TEMP_PERMISSION_GRANT_ID', 'VERIFIED_ID_TEMP_SERVICE_PRINCIPAL_ID', 'VERIFIED_ID_TEMP_APPLICATION_OBJECT_ID') |
+        Where-Object { Get-VidEnvironmentValue -Name $_ }) {
+        throw 'A previous run left temporary administration object IDs. Run the explicit orphan recovery command before tenant bootstrap.'
+    }
+    Assert-VidGraphBootstrapPermission -TenantId ([guid]$env:AZURE_TENANT_ID)
+}
 
 Write-VidStep 'Verified ID deployment preflight'
 Write-VidInfo "Tenant: $($account.tenantId)"

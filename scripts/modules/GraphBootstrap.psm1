@@ -6,17 +6,24 @@ $script:VerifiedIdAdminAppId = '6a8b4b39-c021-437c-b060-5a14a3fd65f3'
 $script:VerifiedIdAdminScope = 'full_access'
 
 function Get-VidGraphAccessToken {
+    param([Parameter(Mandatory)][guid]$TenantId)
+
     $azdResult = & azd auth token --scope 'https://graph.microsoft.com/.default' --output json 2>$null
     if ($LASTEXITCODE -eq 0) {
         $parsed = $azdResult | ConvertFrom-Json
-        if (-not [string]::IsNullOrWhiteSpace($parsed.token)) { return $parsed.token }
+        if (-not [string]::IsNullOrWhiteSpace($parsed.token)) {
+            Assert-VidGraphTokenTenant -Token $parsed.token -TenantId $TenantId
+            return $parsed.token
+        }
     }
 
-    $azResult = & az account get-access-token --resource-type ms-graph --output json 2>&1
+    $azResult = & az account get-access-token --tenant $TenantId.Guid --resource-type ms-graph --output json 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to acquire a Microsoft Graph token from azd or Azure CLI. $($azResult -join ' ')"
     }
-    return ($azResult | ConvertFrom-Json).accessToken
+    $token = ($azResult | ConvertFrom-Json).accessToken
+    Assert-VidGraphTokenTenant -Token $token -TenantId $TenantId
+    return $token
 }
 
 function Get-VidJwtPayload {
@@ -29,8 +36,25 @@ function Get-VidJwtPayload {
     return [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json -Depth 20
 }
 
+function Assert-VidGraphTokenTenant {
+    param([Parameter(Mandatory)][string]$Token, [Parameter(Mandatory)][guid]$TenantId)
+
+    $payload = Get-VidJwtPayload -Token $Token
+    $tokenTenant = if ($payload.PSObject.Properties['tid']) { [string]$payload.tid } else { '' }
+    $scopeClaim = if ($payload.PSObject.Properties['scp']) { [string]$payload.scp } else { '' }
+    $objectId = if ($payload.PSObject.Properties['oid']) { [string]$payload.oid } else { '' }
+    if ($tokenTenant -ne $TenantId.Guid) {
+        throw 'Microsoft Graph token tenant does not match the selected Azure tenant.'
+    }
+    if ([string]::IsNullOrWhiteSpace($scopeClaim) -or [string]::IsNullOrWhiteSpace($objectId)) {
+        throw 'Microsoft Graph bootstrap requires a delegated user token with an object ID.'
+    }
+}
+
 function Assert-VidGraphBootstrapPermission {
-    $token = Get-VidGraphAccessToken
+    param([Parameter(Mandatory)][guid]$TenantId)
+
+    $token = Get-VidGraphAccessToken -TenantId $TenantId
     $payload = Get-VidJwtPayload -Token $token
     if ([string]::IsNullOrWhiteSpace($payload.scp)) {
         throw 'Microsoft Graph bootstrap requires a delegated user token.'
@@ -167,7 +191,11 @@ function Invoke-VidBrowserAuthorization {
 function New-VidTemporaryAdminApplication {
     param([Parameter(Mandatory)][string]$TenantId)
 
-    $graphToken = Get-VidGraphAccessToken
+    if (@('VERIFIED_ID_TEMP_PERMISSION_GRANT_ID', 'VERIFIED_ID_TEMP_SERVICE_PRINCIPAL_ID', 'VERIFIED_ID_TEMP_APPLICATION_OBJECT_ID') |
+        Where-Object { Get-VidEnvironmentValue -Name $_ }) {
+        throw 'Recorded temporary administration object IDs must be recovered before creating a new application.'
+    }
+    $graphToken = Get-VidGraphAccessToken -TenantId $TenantId
     $temporary = [ordered]@{
         ApplicationObjectId = ''
         AppId = ''
@@ -186,6 +214,7 @@ function New-VidTemporaryAdminApplication {
         $scope = @($resource.oauth2PermissionScopes | Where-Object { $_.value -eq $script:VerifiedIdAdminScope -and $_.isEnabled })[0]
         if ($null -eq $scope) { throw "Verified ID delegated scope '$($script:VerifiedIdAdminScope)' was not found." }
 
+        Set-VidEnvironmentValue -Name 'VERIFIED_ID_TEMP_TENANT_ID' -Value ([guid]$TenantId).Guid
         $app = Invoke-VidGraphRequest -Method POST -Path '/applications' -AccessToken $graphToken -Body @{
             displayName = $temporary.DisplayName
             signInAudience = 'AzureADMyOrg'
@@ -225,7 +254,7 @@ function New-VidTemporaryAdminApplication {
         return [pscustomobject]$temporary
     } catch {
         $failureStack = $_.ScriptStackTrace
-        Remove-VidTemporaryAdminApplication -TemporaryApplication ([pscustomobject]$temporary) -SuppressErrors
+        Remove-VidTemporaryAdminApplication -TemporaryApplication ([pscustomobject]$temporary) -TenantId $TenantId -SuppressErrors
         $detail = Get-VidHttpErrorText -ErrorRecord $_
         throw "Unable to create the temporary Verified ID administration application. The signed-in Graph token needs Application.ReadWrite.All and DelegatedPermissionGrant.ReadWrite.All. $detail`n$failureStack"
     }
@@ -234,12 +263,13 @@ function New-VidTemporaryAdminApplication {
 function Remove-VidTemporaryAdminApplication {
     param(
         [AllowNull()][object]$TemporaryApplication,
+        [Parameter(Mandatory)][guid]$TenantId,
         [switch]$SuppressErrors
     )
 
     if ($null -eq $TemporaryApplication) { return }
     try {
-        $token = Get-VidGraphAccessToken
+        $token = Get-VidGraphAccessToken -TenantId $TenantId
         foreach ($item in @(
             @{ Id = $TemporaryApplication.PermissionGrantId; Path = '/oauth2PermissionGrants/' },
             @{ Id = $TemporaryApplication.ServicePrincipalId; Path = '/servicePrincipals/' },
@@ -262,7 +292,7 @@ function Remove-VidTemporaryAdminApplication {
                 Start-Sleep -Seconds 2
             }
         }
-        foreach ($name in @('VERIFIED_ID_TEMP_PERMISSION_GRANT_ID', 'VERIFIED_ID_TEMP_SERVICE_PRINCIPAL_ID', 'VERIFIED_ID_TEMP_APPLICATION_OBJECT_ID')) {
+        foreach ($name in @('VERIFIED_ID_TEMP_PERMISSION_GRANT_ID', 'VERIFIED_ID_TEMP_SERVICE_PRINCIPAL_ID', 'VERIFIED_ID_TEMP_APPLICATION_OBJECT_ID', 'VERIFIED_ID_TEMP_TENANT_ID')) {
             Set-VidEnvironmentValue -Name $name -Value '' -Force
         }
     } catch {
@@ -275,14 +305,20 @@ function Remove-VidTemporaryAdminApplication {
 }
 
 function Remove-VidOrphanedAdminApplication {
+    param([Parameter(Mandatory)][guid]$TenantId)
+
     $temporary = [pscustomobject]@{
         PermissionGrantId = Get-VidEnvironmentValue -Name 'VERIFIED_ID_TEMP_PERMISSION_GRANT_ID'
         ServicePrincipalId = Get-VidEnvironmentValue -Name 'VERIFIED_ID_TEMP_SERVICE_PRINCIPAL_ID'
         ApplicationObjectId = Get-VidEnvironmentValue -Name 'VERIFIED_ID_TEMP_APPLICATION_OBJECT_ID'
     }
     if ($temporary.PermissionGrantId -or $temporary.ServicePrincipalId -or $temporary.ApplicationObjectId) {
-        Write-Warning 'A previous run left temporary Verified ID administration object IDs. Attempting cleanup before continuing.'
-        Remove-VidTemporaryAdminApplication -TemporaryApplication $temporary
+        $recordedTenantId = Get-VidEnvironmentValue -Name 'VERIFIED_ID_TEMP_TENANT_ID'
+        if (-not $recordedTenantId -or $recordedTenantId -ne $TenantId.Guid) {
+            throw 'The recorded temporary object tenant is absent or does not match the selected tenant. Inspect and remove legacy objects manually.'
+        }
+        Write-Warning 'Removing recorded temporary Verified ID administration objects from the selected tenant.'
+        Remove-VidTemporaryAdminApplication -TemporaryApplication $temporary -TenantId $TenantId
     }
 }
 
