@@ -271,7 +271,7 @@ Review VID-002 against the current repository state. Its status or authorization
 
 - **Kind:** feature
 - **Priority:** P2
-- **Status:** proposed
+- **Status:** done
 - **Wave:** 2
 - **Authorization:** local-only
 - **Blocker:** _none_
@@ -314,7 +314,9 @@ Operators need clear pending DNS, authority, credential and delivery status with
 
 **Evidence:**
 
-- _none_
+- Implemented standalone read-only PS7.6+ status entry point against main 4d34f9a1c87c948190bd188fd2aa97d7ca58798b. Eleven independent actionable gates, fresh GET observations, exact tenant/operator/admin-audience/scope/expiry routing guard, selected authority/vault/contract binding, no bootstrap imports, token acquisition, secret routes, writes or stored Complete reuse. Unsigned decoded public/admin claims remain Observed; fresh service domain flags are required for configuration readiness. Independent review found that a returned foreign contract authorityId was ignored; repaired both list/exact paths to reject present empty/null/foreign bindings while supporting documented omission. Negative fixtures prove no downstream MyAccount GET.
+- Full registered scripts/Test-Repository.ps1 passed syntax, analyzer, Bicep 0.46.1 and 86/86 Pester tests &lpar;43 new actual status/transport/CLI fixtures and one new canonical permission-schema/source-hash test&rpar;. No live DNS, admin authorization, service verification, issuance, presentation or cleanup was performed; VID-002 remains open.
+- docs/read-only-setup-status.md evaluates deployment-validation 1.1.1 and candidate deployment-receipt 0.2.1 at immutable reference 277584b33fcae7d47113718aad6428abdc4bc50f&colon; both deferred, no adoption/lock/runtime dependency. Source-hashed partial azd-permissions.json records existing admin full&lowbar;access and Graph bootstrap requirements with explicit target-role/RBAC/signing/DNS gaps; no grants or permission changes.
 
 **Review and authorization note:**
 

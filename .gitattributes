@@ -1,0 +1,7 @@
+/scripts/modules/VerifiedIdStatus.psm1 text eol=lf
+/scripts/Get-VerifiedIdSetupStatus.ps1 text eol=lf
+/docs/read-only-setup-status.md text eol=lf
+/tests/SetupStatus.Tests.ps1 text eol=lf
+/tests/PermissionManifest.Tests.ps1 text eol=lf
+/azd-permissions.json text eol=lf
+/schemas/permission-requirements.schema.json text eol=lf

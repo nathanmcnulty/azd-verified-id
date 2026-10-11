@@ -100,7 +100,13 @@ A temporary sign-in registration is used for administrator approval and deleted 
 
 ## Safe to Run Again
 
-You can safely run this command to check or resume the deployment:
+For read-only observations, use [setup status](docs/read-only-setup-status.md) with PowerShell 7.6+:
+
+```powershell
+./scripts/Get-VerifiedIdSetupStatus.ps1
+```
+
+For a separately authorized mutating deployment resume, use:
 
 ```powershell
 azd hooks run postprovision
