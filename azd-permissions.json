@@ -1,0 +1,71 @@
+{
+  "coverage": "partial",
+  "requirements": [
+    {
+      "rationale": "Existing mutating bootstrap requirement; not invoked or requested by read-only status.",
+      "kind": "delegated",
+      "defaultEnabled": true,
+      "evidenceState": "documented",
+      "feature": "tenant-bootstrap",
+      "evidence": [
+        {
+          "path": "docs/read-only-setup-status.md",
+          "documentationUrl": "https://github.com/nathanmcnulty/azd-verified-id/blob/4d34f9a1c87c948190bd188fd2aa97d7ca58798b/scripts/modules/GraphBootstrap.psm1",
+          "sha256": "e0b298396e89dff39a1898f21679ac77ca78e2cf60f811f41dfe9cee45488987"
+        }
+      ],
+      "resource": "Microsoft Graph",
+      "permission": "Application.ReadWrite.All",
+      "principal": "Separately authorized bootstrap operator",
+      "scope": "Selected tenant application registration and delegated grant bootstrap",
+      "phase": "deployment"
+    },
+    {
+      "rationale": "Existing mutating bootstrap requirement; not invoked or requested by read-only status.",
+      "kind": "delegated",
+      "defaultEnabled": true,
+      "evidenceState": "documented",
+      "feature": "tenant-bootstrap",
+      "evidence": [
+        {
+          "path": "docs/read-only-setup-status.md",
+          "documentationUrl": "https://github.com/nathanmcnulty/azd-verified-id/blob/4d34f9a1c87c948190bd188fd2aa97d7ca58798b/scripts/modules/GraphBootstrap.psm1",
+          "sha256": "e0b298396e89dff39a1898f21679ac77ca78e2cf60f811f41dfe9cee45488987"
+        }
+      ],
+      "resource": "Microsoft Graph",
+      "permission": "DelegatedPermissionGrant.ReadWrite.All",
+      "principal": "Separately authorized bootstrap operator",
+      "scope": "Selected tenant application registration and delegated grant bootstrap",
+      "phase": "deployment"
+    },
+    {
+      "rationale": "Existing delegated scope required by admin service; scope also permits writes but this client only GETs. Decoded routing claims do not authorize access. No grants are made.",
+      "kind": "delegated",
+      "defaultEnabled": false,
+      "evidenceState": "code",
+      "feature": "read-only-status",
+      "evidence": [
+        {
+          "path": "scripts/modules/VerifiedIdStatus.psm1",
+          "documentationUrl": "https://learn.microsoft.com/en-us/entra/verified-id/admin-api",
+          "sha256": "9b3a43b0a640e321f89256a142e5a218a1e4ad0ec65361fcbcc7dce4f2d26782"
+        }
+      ],
+      "resource": "Verified ID Admin API (6a8b4b39-c021-437c-b060-5a14a3fd65f3)",
+      "permission": "full_access",
+      "principal": "Existing selected tenant/operator delegated administrator",
+      "scope": "Selected tenant authority, selected authority contracts and MyAccount settings GET routes",
+      "phase": "discovery"
+    }
+  ],
+  "status": "implemented",
+  "schemaVersion": "1.0",
+  "gaps": [
+    "Effective selected operator admin roles and consent must be verified on the actual tenant; decoded token claims are not permission approval.",
+    "Baseline deployment and cleanup Azure RBAC, Key Vault signing access and service identity permissions need a separate source-backed inventory.",
+    "DNS-provider write permissions and external issuance/presentation actors are target-specific and not defined by this read-only feature."
+  ],
+  "reviewedOn": "2026-10-10",
+  "solutionId": "azd-verified-id"
+}

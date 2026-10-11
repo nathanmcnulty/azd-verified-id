@@ -95,7 +95,9 @@ Do not persist confirmation variables in the azd environment. Normal browser or 
 
 ## Resume and Status
 
-Use this command after DNS changes or whenever tenant state needs to be checked:
+Use [read-only setup status](read-only-setup-status.md) with PowerShell 7.6+ for fresh independent gates. Stored azd status values describe a previous run; they are not fresh proof. The status command performs no bootstrap, signing-secret access or writes.
+
+For a separately authorized mutating resume after DNS changes, run:
 
 ```powershell
 azd hooks run postprovision
