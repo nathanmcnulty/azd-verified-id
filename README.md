@@ -20,7 +20,7 @@ Install these free Microsoft tools on your computer:
 
 - [Azure CLI](https://aka.ms/installazurecli)
 - [Azure Developer CLI](https://aka.ms/azure-dev/install)
-- [PowerShell 7](https://aka.ms/powershell-release?tag=stable)
+- [PowerShell 7.6+](https://aka.ms/powershell-release?tag=stable)
 
 You also need:
 
@@ -135,3 +135,15 @@ Tenant reset is intentionally protected because it invalidates issued credential
 - [Advanced configuration](docs/advanced-configuration.md)
 - [Verified Employee details](credential/verified-employee.md)
 - [Security guidance](SECURITY.md)
+
+## Repository validation
+
+Use PowerShell 7.6+ with Pester 6.2.0 and PSScriptAnalyzer 1.25.0. From the repository root, run:
+
+~~~powershell
+Install-Module Pester -RequiredVersion 6.2.0 -Scope CurrentUser -Force
+Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+./scripts/Test-Repository.ps1
+~~~
+
+The validator records the selected runtime and test-module versions, checks syntax, builds Bicep and requires every registered test to pass. Missing Pester, empty suites, skipped, inconclusive or unexecuted cases fail validation. These offline checks do not prove deployment, DNS verification, issuance or presentation.

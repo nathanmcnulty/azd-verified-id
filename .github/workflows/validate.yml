@@ -20,11 +20,31 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-azd@0b7e3a35ab00f2eee7080c845eb39c3f0ebfa553 # v2.4.0
+      - name: Select PowerShell 7.6.6
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="$RUNNER_TEMP/powershell-7.6.6"
+          archive="$RUNNER_TEMP/powershell-7.6.6-linux-x64.tar.gz"
+          mkdir "$runtime"
+          curl --fail --location --output "$archive" 'https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/powershell-7.6.6-linux-x64.tar.gz'
+          echo "ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc  $archive" | sha256sum --check
+          tar -xzf "$archive" -C "$runtime"
+          chmod +x "$runtime/pwsh"
+          echo "$runtime" >> "$GITHUB_PATH"
+
+      - name: Assert selected PowerShell runtime
+        shell: pwsh
+        run: |
+          if ($PSVersionTable.PSVersion -ne [version]'7.6.6' -or -not [Environment]::Is64BitProcess) {
+            throw "Expected 64-bit PowerShell 7.6.6; observed $($PSVersionTable.PSVersion)."
+          }
+
       - name: Install Pester
         shell: pwsh
         run: |
-          Install-Module Pester -MinimumVersion 5.6.1 -Scope CurrentUser -Force
-          Install-Module PSScriptAnalyzer -MinimumVersion 1.22.0 -Scope CurrentUser -Force
+          Install-Module Pester -RequiredVersion 6.2.0 -Scope CurrentUser -Force
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
       - name: Install Bicep
         shell: bash
         run: az bicep install

@@ -1,8 +1,13 @@
+#Requires -Version 7.6
 [CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path $PSScriptRoot -Parent
+
+Write-Host "PowerShell: $($PSVersionTable.PSVersion); .NET: $([Environment]::Version)"
+Import-Module Pester -RequiredVersion 6.2.0 -Force -ErrorAction Stop
+Write-Host "Pester: $((Get-Module Pester).Version)"
 
 Write-Host 'Validating PowerShell syntax...'
 $syntaxErrors = @()
@@ -30,13 +35,9 @@ Write-Host 'Building Bicep...'
 & az bicep build --file (Join-Path $repositoryRoot 'infra\main.bicep') --stdout | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Bicep build failed.' }
 
-$pester = Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge [Version]'5.0.0' } | Sort-Object Version -Descending | Select-Object -First 1
-if ($null -eq $pester) {
-    Write-Warning 'Pester 5 is not installed; unit tests were not run.'
-} else {
-    Import-Module $pester.Path -Force
-    $result = Invoke-Pester -Path (Join-Path $repositoryRoot 'tests') -PassThru
-    if ($result.Result -ne 'Passed') { throw "Pester validation failed: $($result.Result)." }
+$result = Invoke-Pester -Path (Join-Path $repositoryRoot 'tests') -PassThru
+if ($result.Result -ne 'Passed' -or $result.TotalCount -eq 0 -or $result.SkippedCount -or $result.InconclusiveCount -or $result.NotRunCount) {
+    throw 'Every registered Pester test must pass without skipped, inconclusive or unexecuted cases.'
 }
 
 Write-Host 'Repository validation passed.' -ForegroundColor Green
