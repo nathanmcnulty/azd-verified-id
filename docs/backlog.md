@@ -7,7 +7,7 @@
 - **Repository:** nathanmcnulty/azd-verified-id
 - **Source revision:** `7f98a37b025094de6ebf5cb15f11552aa7a5dbd9`
 - **Captured:** 2026-10-04
-- **Items:** 6
+- **Items:** 7
 
 ## VID-001: Reconcile this backlog with current source and active work
 
@@ -214,6 +214,60 @@ Open report captured 2026-10-03 during execution reconciliation. Another code-qu
 **Review and authorization note:**
 
 Review VID-006 against the current repository state. Its status or authorization class is not eligible for an actionable generated handoff. Do not claim or execute it without explicit selection, satisfied dependencies, and every required authorization. Never interpret this generated view as approval.
+
+## VID-007: Require the supported authoring and validation baseline
+
+- **Kind:** maintenance
+- **Priority:** P1
+- **Status:** done
+- **Wave:** 0
+- **Authorization:** local-only
+- **Blocker:** _none_
+- **Claim:** _none_
+
+**Problem:**
+
+Owned bootstrap entrypoints lacked a PowerShell floor; the validator allowed old or absent Pester, while inconclusive, skipped or empty suites could appear successful.
+
+**Scope:**
+
+- Owned scripts and modules runtime declarations
+- scripts/Test-Repository.ps1 and .github/workflows/validate.yml
+- Current README prerequisites and canonical backlog evidence
+
+**Acceptance:**
+
+- Owned authoring entrypoints require PowerShell 7.6+; CI selects verified PowerShell 7.6.6 and Pester 6.2.0.
+- Missing Pester and empty, failed, skipped, inconclusive or unexecuted suites fail validation.
+- Retain every existing safety assertion, permission requirement, deployment default and integrity-locked uploader byte.
+
+**Validation:**
+
+- ./scripts/Test-Repository.ps1
+- Check canonical backlog schema and regenerate docs/backlog.md.
+- Run actual validator copies against isolated passing, inconclusive, mixed-skipped, all-skipped, empty, failing and missing-Pester fixtures; compare old and corrected results.
+
+**Dependencies:**
+
+- _none_
+
+**Components:**
+
+- _none_
+
+**Sources:**
+
+- https&colon;//github.com/nathanmcnulty/azd-verified-id/issues/13
+
+**Evidence:**
+
+- Reconciled exact current main a3c368e605852f30a66d82304b51907bb037ea67 before editing; no active draft overlaps this task. All 14 owned script/module files declare PowerShell 7.6 &lpar;12 newly added guards&rpar;. Current requirements use PowerShell 7.6+ and exact Pester 6.2.0 validation; historical receipts remain unchanged.
+- Full scripts/Test-Repository.ps1 passes on PowerShell 7.6.6/.NET 10.0.12/Pester 6.2.0&colon; syntax, existing Error-severity static analysis, Bicep 0.42.1 and 86/86 tests with zero failures, skips, inconclusive or unexecuted cases. No test or safety assertion was removed or weakened. Permission semantics, uploader lock/assets, infrastructure and application behavior remain unchanged. No authentication, deployment, DNS change, issuance, presentation or cleanup ran; VID-002 native acceptance remains open.
+- Actual original/current validator copies ran in 14 isolated PowerShell 7.6.6 processes against passing, inconclusive, mixed-skipped, all-skipped, empty, failing and missing-Pester fixtures. The original accepted every case except failure; the corrected validator accepts only the passing case. Missing Pester now stops before Bicep. Native-command tripwires permitted only the controlled Bicep invocation; no authentication or cloud calls occurred.
+
+**Review and authorization note:**
+
+Review VID-007 against the current repository state. Its status or authorization class is not eligible for an actionable generated handoff. Do not claim or execute it without explicit selection, satisfied dependencies, and every required authorization. Never interpret this generated view as approval.
 
 ## VID-002: Qualify DNS/domain verification, issuance and presentation
 
